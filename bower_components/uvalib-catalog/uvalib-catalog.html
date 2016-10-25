@@ -1,0 +1,432 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-ajax/iron-ajax.html">
+<link rel="import" href="../uvalib-helper-libs/lodash.html">
+
+<!--
+An element used to interface with the UVa Library Catalog API via ajax.
+
+Example:
+
+    <uvalib-catalog auto></uvalib-catalog>
+
+Example:
+
+    <uvalib-catalog></uvalib-catalog>
+
+@demo demo/index.html
+@hero hero.svg
+-->
+
+<dom-module id="uvalib-catalog">
+  <template>
+    <iron-ajax id="ajax" auto="[[auto]]" debounce-duration="{{debounceDuration}}"
+          loading="{{loading}}" params="{{_params}}"
+          timeout="{{timeout}}" url="{{_url}}" verbose="{{verbose}}"
+          on-error="_handleError" on-request="_handleRequest" on-response="_handleResponse"
+          handle-as="json"></iron-ajax>
+  </template>
+
+  <script>
+  (function() {
+    'use strict';
+
+    Polymer({
+      is: 'uvalib-catalog',
+
+      properties: {
+
+        /**
+         * When true (or set to true) triggers a call to the generateRequest method
+         */
+        trigger: {
+          type: Boolean,
+          value: false,
+          observer: '_triggerRequest',
+          notify: true
+        },
+
+        /**
+         * If true, automatically performs an Ajax request when either `query`,
+         * `page`, or `rows` changes.
+         */
+        auto: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * Total number of results in the last response ***(not just the returned rows)***
+         */
+        count: {
+          type: Number,
+          value: 0,
+          notify: true,
+          readOnly: true
+        },
+
+        /**
+         * Length of time in milliseconds to debounce multiple automatically generated requests.
+         */
+        debounceDuration: {
+          type: Number,
+          value: 0,
+          notify: true
+        },
+
+        /**
+         * Defines the filters that should be used (from the available filters)
+         * and how they should be mapped.  ***This might be renamed to filter-mapping soon***
+         */
+        filters: {
+          type: Array,
+          value: function(){
+            return [{orig:'library_facet',new:'library',name:'Library'},
+                    {orig:'format_facet',new:'format',name:'Format'},
+                    {orig:'published_date_facet',new:'era',name:'Publication Era'},
+                    {orig:'author_facet',new:'author',name:'Author'},
+                    {orig:'subject_facet',new:'subject',name:'Subject'},
+                    {orig:'language_facet',new:'language',name:'Language'},
+                    {orig:'call_number_facet',new:'call_number',name:'Call Number'},
+                    {orig:'region_facet',new:'region',name:'Geographic Location'},
+                    {orig:'digital_collection_facet',new:'digital_collection',name:'Digital Collection'},
+                    {orig:'source_facet',new:'source',name:'Source'},
+                    {orig:'series_title_facet',new:'series',name:'Series'}];
+          },
+          notify: true,
+          readOnly: true
+        },
+
+        /**
+         * The items from the Catalog request, in a normalized/simplified Format
+         *
+         * @type {Object[]}
+         */
+        items: {
+          type: Array,
+          value: [],
+          notify: true,
+          readOnly: true
+        },
+
+        /**
+         * The query string of the search
+         */
+        query: {
+          type: String,
+          notify: true,
+          value: "",
+          observer: "_queryChanged"
+        },
+
+        /**
+         * Set the timeout flag on the request.
+         */
+        timeout: {
+          type: Number,
+          value: 0
+        },
+
+        /**
+         * If true, error messages will automatically be logged to the console.
+         */
+        verbose: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * True while lastRequest is in flight.
+         */
+        loading: {
+          type: Boolean,
+          notify: true,
+        },
+
+        /**
+         * The number of rows to return to items
+         **/
+        rows: {
+          type: Number,
+          notify: true,
+          value: 10,
+          observer: '_rowsChanged'
+        },
+
+        /**
+         * The page of results to return to items
+         **/
+        page: {
+          type: Number,
+          notify: true,
+          value: 1,
+          observer: '_pageChanged'
+        },
+
+        /**
+         * The base url used to make requests to the catalog. ***This should change when we are no longer using the proxy for CORS support***
+         */
+        _url: {
+          type: String,
+          value: "https://api.library.virginia.edu/search/catalog.json"
+        },
+
+        /**
+         * The parameters to pass to the catalog api (as GET parameters)
+         * See https://confluence.lib.virginia.edu/pages/viewpage.action?pageId=13763696 for api
+         */
+        _params: {
+          type: Object,
+          value: {q:'',per_page:10, page:1},
+          notify: true
+        },
+
+        _filterValueMap: {
+          type: Object,
+          value: {}
+        }
+
+      },
+
+      // Element Lifecycle
+
+      ready: function() {
+        // `ready` is called after all elements have been configured, but
+        // propagates bottom-up. This element's children are ready, but parents
+        // are not.
+        //
+        // This is the point where you should make modifications to the DOM (when
+        // necessary), or kick off any processes the element wants to perform.
+      },
+
+      attached: function() {
+        // `attached` fires once the element and its parents have been inserted
+        // into a document.
+        //
+        // This is a good place to perform any work related to your element's
+        // visual state or active behavior (measuring sizes, beginning animations,
+        // loading resources, etc).
+      },
+
+      detached: function() {
+        // The analog to `attached`, `detached` fires when the element has been
+        // removed from a document.
+        //
+        // Use this to clean up anything you did in `attached`.
+      },
+
+      /**
+       * Fired when an error is received.
+       *
+       * @event error
+       */
+      _handleError: function(err) {
+        this.fire('error', err, {bubbles: false});
+      },
+
+      /**
+       * Fired when catalog search results are returned.
+       *
+       * @event request
+       */
+      _handleRequest: function(req) {
+        this.fire('request', req, {bubbles: false});
+      },
+
+      /**
+       * Fired when a response is received.
+       *
+       * @event response
+       */
+      _handleResponse: function(resp) {
+        if (this.$.ajax.lastResponse) {
+          this._setItems(this._mapResults(this.$.ajax.lastResponse.response.docs));
+          this._setCount(this.$.ajax.lastResponse.response.numFound);
+          this.fire('response', resp, {bubbles: false});
+        }
+      },
+
+      /**
+       * Update the AJAX query API parameter when the query property is changed.
+       */
+      _queryChanged: function() {
+        if (this._params) {
+          this.set('_params.q', this.query);
+        }
+      },
+
+      /**
+       * Update the AJAX per_page API parameter when the rows property is changed.
+       */
+      _rowsChanged: function() {
+        // Make sure a negative value does not occur.
+        if (this.rows < 1) {
+          this.rows = 1;
+        }
+        // Make sure the number of rows does not exceed the total count of items.
+        if (this.count > 0) {
+          if (this.rows > this.count) {
+            this.rows = this.count;
+          }
+        }
+        if (this._params) {
+          this.set('_params.per_page', this.rows);
+        }
+      },
+
+      /**
+       * Update the AJAX page API parameter when the page property is changed.
+       */
+      _pageChanged: function() {
+        // Make sure a negative value does not occur.
+        if (this.page < 0) {
+          this.page = 0;
+        }
+        if (this._params) {
+          this.set('_params.page', this.page);
+        }
+      },
+
+      /**
+       * Map some of the detail results for a catalog item to a set of common labels.
+       *
+       * @param {Array} items - article search result items.
+       */
+      _mapResults: function(items){
+        return _.map(items,function(item){
+          var obj = {id: item.id,
+                     title: item.title_display.join(', '),
+                     author: (item.author_display && item.author_display.length>0)?
+                                     item.author_display.join(', '):"",
+                     format: (item.format_facet && item.format_facet.length>0)?
+                                     item.format_facet.join(', '):"",
+                     image: "http://search.lib.virginia.edu/catalog/"+item.id+"/image.jpg"
+                    };
+          if (item.subtitle_display && item.subtitle_display.length>0)
+            obj.title += ': ' + item.subtitle_display.join(', ');
+          if (item.creator_display && item.creator_display.length>0)
+            obj.creator = item.creator_display.join(', ');
+          return obj;
+        });
+      },
+
+      /**
+       * Determine if there are facets returned with the search results that could be used to refine the search.
+       *
+       * @param {Array} selFilters - The user selected facets.
+       * @return {Boolean}
+       */
+      areFiltersAvailable: function(selFilters){
+        var filters = this.getFilters();
+        for (var key in selFilters) {
+          var filter = _.find(filters,{id:key});
+          if (filter) {
+            selFilters[key].forEach(function(val){
+              if (!_.find(filter.values,{id:val}))
+                return false
+            }, this);
+          } else {
+            return false;
+          }
+        }
+        return true;
+      },
+
+      /**
+       * Clear out the selected filters set as part of the query.
+       */
+      emptyFilters: function(){
+                for (var key in this._params) {
+                  if (key.startsWith('f['))
+                    delete this._params[key];
+                }
+      },
+
+      /**
+       * Set the search facets to use in the article request.
+       *
+       * @param {Array} selFilters - The user selected facets.
+       */
+      setSelectedFilters: function(selFilters){
+                this.emptyFilters();
+                if (!_.isEmpty(selFilters)) {
+                  for (var key in selFilters) {
+                    var filter = _.find(this.filters,{new:key});
+                    if (filter) {
+                      selFilters[key].forEach(function(val){
+                        this.set('_params.f['+filter.orig+'][]', this._filterValueMap[filter.new][val]);
+                      }, this);
+                    }
+                  }
+                }
+      },
+
+      /**
+       * Get the search facets used in the article request.
+       *
+       * @return {Array}
+       */
+      getFilters: function(){
+                return this._mapFilters(this.$.ajax.lastResponse.facet_counts.facet_fields);
+      },
+
+      /**
+       * Retrieves the facets that were used as part of the search.
+       *
+       * @param {Array} fields
+       * @return {Array}
+       */
+      _mapFilters: function(fields){
+                var facets = []
+                this.filters.forEach(function(filter,i){
+                  if (fields[filter.orig])
+                    this._filterValueMap[filter.new] = {};
+                    facets.push({
+                      id: filter.new,
+                      name: filter.name,
+                      values: _.map(_.chunk(fields[filter.orig], 2),
+                                    function(i){
+                                      var id = i[0].replace(/\s/g,'_').toLowerCase();
+                                      this._filterValueMap[filter.new][id] = i[0];
+                                      return {id:id,
+                                              name:i[0],
+                                              count:i[1]};}.bind(this))
+                    });
+                }, this);
+                return facets;
+      },
+
+      /**
+       * Trigger the component to generate another request.
+       */
+      _triggerRequest: function(){
+        console.log('trigger request');
+        if (this.trigger) {
+          console.log('trigger');
+          this.generateRequest();
+        }
+      },
+
+      /**
+       * Generate an AJAX request to get catalog items based on the query.
+       */
+      generateRequest: function(){
+          this.$.ajax.generateRequest();
+      },
+
+      /**
+       * Get next page of catalog items for the search query.
+       */
+      more: function() {
+        var rowsRetrieved = this.page * this.rows;
+        if (rowsRetrieved < this.count) {
+          this.page += 1;
+          if (! this.auto) {
+            this.generateRequest();
+          }
+        }
+      },
+
+    });
+  })();
+  </script>
+</dom-module>

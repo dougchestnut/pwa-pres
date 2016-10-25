@@ -1,0 +1,30 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<dom-module id="html-echo">
+  <template>
+  <style is="custom-style">
+    :host {
+      @apply(--html-echo);
+    }
+  </style>
+  <div id="ok"></div>
+  </template>
+</dom-module>
+<script>
+  (function () {
+    Polymer({
+      is: 'html-echo',
+      properties: {
+        html: {
+          type: String,
+          observer: '_htmlChanged'
+        }
+      },
+      _htmlChanged: function (neo) {
+        // WARNING: potential XSS vulnerability if `html` comes from an untrusted source
+        Polymer.dom(this.$.ok).innerHTML = neo;
+        this.updateStyles();
+      }
+    });
+  })();
+</script>

@@ -1,0 +1,95 @@
+<!doctype html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+    <title>uvalib-catalog Demo</title>
+    <script src="../../webcomponentsjs/webcomponents-lite.min.js"></script>
+    <link rel="import" href="../../paper-toggle-button/paper-toggle-button.html">
+    <link rel="import" href="../../paper-search/paper-search.html">
+    <link rel="import" href="../../paper-slider/paper-slider.html">
+    <link rel="import" href="../../paper-button/paper-button.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../uvalib-catalog.html">
+  </head>
+  <style>
+    ul[data-loading] {opacity: .30;}
+    div.control {margin-bottom: 10px;}
+  </style>
+  <body unresolved>
+
+<demo-snippet>
+  <template>
+
+    <template is="dom-bind" id="app">
+
+      <uvalib-catalog id="catalog" items="{{items}}" auto="{{auto}}" loading="{{loading}}" count="{{totalCount}}" filters="{{filters}}"
+                      debounce-duration="{{debounceDuration}}" query="{{query}}" rows="{{rows}}" page="{{page}}"></uvalib-catalog>
+
+      <div class="control"><paper-input label="Query" value="{{query}}"></paper-input></div>
+      <div class="control">Results below (page count): <paper-slider value="{{rows}}" min="10" max="100" pin></paper-input></div>
+      <div class="control"><paper-toggle-button active="{{auto}}">Auto</paper-toggle-button></div>
+      <div class="control">Debounce Duration (milliseconds): <paper-slider value="{{debounceDuration}}" max="5000" pin></paper-slider></div>
+      <div class="control"><paper-button raised disabled="{{auto}}" on-tap="submitSearch">Submit</paper-button></div>
+
+      <h2>
+        <template is="dom-if" if="{{totalCount}}">{{totalCount}}</template>
+        Results
+        <template is="dom-if" if="{{loading}}"><strong>Loading...</strong></template>
+      </h2>
+
+      <div class="control">
+        <template is="dom-if" if="{{isPreviousPage(rows,page,totalCount)}}">
+          <paper-button raised on-tap="previousPage">Previous Page</paper-button>
+        </template>
+        <template is="dom-if" if="{{isNextPage(rows,page,totalCount)}}">
+          <paper-button raised on-tap="nextPage">Next Page</paper-button>
+        </template>
+        <template is="dom-if" if="{{isNextPage(rows,page,totalCount)}}">
+          <paper-button raised on-tap="openFacets">View Facets</paper-button>
+          <paper-filter-dialog id="filter-dialog" filters="{{filters}}" selected-filters="{{selectedFilters}}" on-save="saveFilters"></paper-filter-dialog>
+        </template>
+      </div>
+
+      <ul data-loading$="{{loading}}">
+        <template is="dom-repeat" items="{{items}}">
+          <li>{{item.title}}</li>
+          </template>
+      </ul>
+
+    </template>
+
+  </template>
+</demo-snippet>
+
+
+    <script>
+      var app = document.querySelector('#app');
+      var selectedFilters;
+
+      app.submitSearch = function(){
+        document.querySelector('#catalog').generateRequest();
+      };
+      app.isPreviousPage = function(){
+        return (app.page>1);
+      };
+      app.isNextPage = function(){
+        return ((app.page+1)*app.rows<app.totalCount);
+      };
+      app.previousPage = function(){
+        app.page--;
+        if (!app.auto) document.querySelector('#catalog').generateRequest();
+      }
+      app.nextPage = function(){
+        document.querySelector('#catalog').more();
+      }
+      app.openFacets = function() {
+        document.querySelector('#filter-dialog').open();
+      }
+      app.saveFilters = function() {
+        document.querySelector('#catalog').setSelectedFilters(selectedFilters);
+      }
+    </script>
+  </body>
+</html>
