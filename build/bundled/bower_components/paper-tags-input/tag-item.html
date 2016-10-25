@@ -1,0 +1,71 @@
+<html><head><link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+
+
+</head><body><dom-module id="tag-item">
+
+  <style>
+    :host {
+      display: block;
+      box-sizing: border-box;
+      font-family: 'Roboto', 'Noto', sans-serif;
+    }    
+    .tag-value{
+      margin-top: 11px;     
+    }
+    .tag-item-container{
+      background-color: var(--light-primary-color);
+      border-radius: 20px;
+      float:left;
+      margin-left:6px;
+      margin-bottom:3px;
+      padding-left:17px;
+    }
+    
+    .large{
+ 
+      font-size:18px;
+    }
+   
+    .large paper-icon-button::shadow #icon{
+        width: 22px;
+        height: 22px;
+    }
+
+    .medium{
+      font-size:14px;
+    }
+    .medium paper-icon-button::shadow #icon{
+        width: 18px;
+        height: 18px;
+    }
+    .small{
+      font-size:12px;
+    }
+    .small paper-icon-button::shadow #icon{
+        width: 14px;
+        height: 14px;
+    }
+
+
+  </style>
+
+  <template>
+      <div style$="{{_containerColor(tagColor, fontColor)}}" class$="{{_containerClass(size)}}">
+        <span class="tag-value">{{value}}</span>
+        <template is="dom-if" if="{{enableRemove}}">
+          <paper-icon-button on-tap="_removeItem" icon="icons:cancel"></paper-icon-button>
+        </template>
+        <template is="dom-if" if="{{!enableRemove}}">
+          <paper-icon-button style="width:0px;visibility:hidden" on-tap="remove" icon="icons:cancel"></paper-icon-button>
+        </template>
+      </div>
+  </template>
+
+</dom-module>
+
+<script>Polymer({is:"tag-item",properties:{index:Number,size:{type:String,value:"large"},tagColor:String,fontColor:String,enableRemove:{type:Boolean,value:!0},value:String},_containerColor:function(e,n){var o=[];return"undefined"!=typeof e&&o.push("background-color:"+e),"undefined"!=typeof n&&o.push("color:"+n),o.join(";")},_containerClass:function(e){return e+" tag-item-container"},_removeItem:function(){this.enableRemove===!0&&this.fire("tag-item-remove",{index:this.index})}});</script>
+</body></html>

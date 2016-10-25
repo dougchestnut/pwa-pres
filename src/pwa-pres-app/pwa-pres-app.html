@@ -4,6 +4,11 @@
 <link rel="import" href="../../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
 <link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout.html">
 <link rel="import" href="../../bower_components/uvalib-catalog/uvalib-catalog.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-app.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-document.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-query.html">
+<link rel="import" href="../../bower_components/paper-tags-input/paper-tags-input.html">
+<link rel="import" href="../../bower_components/paper-material/paper-material.html">
 
 <dom-module id="pwa-pres-app">
   <template>
@@ -11,8 +16,47 @@
       :host {
         display: block;
       }
+      app-toolbar {
+        background-color: lightblue;
+      }
+      app-drawer {
+        --app-drawer-width: 350px;
+        --app-drawer-content-container: {
+          background-color: grey;
+        }
+      }
+      paper-material {
+        margin: 10px;
+        padding: 10px;
+      }
     </style>
-    <h2>Hello [[prop1]]</h2>
+
+    <firebase-app auth-domain="image-tagger-ee5f1.firebaseapp.com"
+                  database-url="https://image-tagger-ee5f1.firebaseio.com/"
+                  api-key="AIzaSyCHXneJwjGMJb8bt1gV5ZS36UUvrUr6iB4"></firebase-app>
+
+    <app-drawer-layout>
+
+      <app-drawer></app-drawer>
+
+      <app-toolbar>
+        <paper-icon-button icon="menu" drawer-toggle></paper-icon-button>
+        <h2 title>UVa Library Image Tagger</h2>
+      </app-toolbar>
+
+      <uvalib-catalog auto items="{{items}}"></uvalib-catalog>
+      <template is="dom-repeat" items="{{items}}">
+        <paper-material elevation="1">
+          <h3>{{item.title}}</h3>
+          <paper-tags-input tags="{{item.tag}}" enableRemove="{{nope}}"
+            placeholder="Please enter a test tag for this" empty-error-message="Oops. Tag could not be empty" label="Demo label" >
+          </paper-tags-input>
+          <firebase-document path="/items/{{item.id}}" data="{{item.tag}}"></firebase-document>
+          <h3>{{item.tags}}</h3>
+        </paper-material>
+      </template>
+
+    </app-drawer-layout>
   </template>
 
   <script>
@@ -25,7 +69,20 @@
           type: String,
           value: 'pwa-pres-app',
         },
+        _nope: {
+          type: Boolean,
+          value: false
+        }
+//        items: {
+//          type: Array,
+//          observer: '_itemsChanged'
+//        }
       },
+//      _itemsChanged: function(){
+//        this.items.forEach(function(item){
+//          if (!item.tags || !Array.isArray(items.tags)) item.tags="food";
+//        }.bind(this));
+//      }
 
     });
   </script>

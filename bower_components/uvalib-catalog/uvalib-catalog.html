@@ -294,6 +294,7 @@ Example:
       _mapResults: function(items){
         return _.map(items,function(item){
           var obj = {id: item.id,
+                     tags: [],
                      title: item.title_display.join(', '),
                      author: (item.author_display && item.author_display.length>0)?
                                      item.author_display.join(', '):"",

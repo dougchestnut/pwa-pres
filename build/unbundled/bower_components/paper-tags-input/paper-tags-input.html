@@ -1,0 +1,41 @@
+<html><head><link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="tag-item.html">
+
+
+</head><body><dom-module id="paper-tags-input">
+  <style>
+    :host {
+      display: block;
+      box-sizing: border-box;
+      font-family: 'Roboto', 'Noto', sans-serif;
+    }
+    .clearfix:after {
+     content: " ";
+     display: block;
+     height: 0;
+     clear: both;
+    }
+  </style>
+
+  <template>
+  <h3>{{label}}</h3>
+    <div class="clearfix">
+    <template is="dom-repeat" items="{{tags}}">
+      <tag-item font-color="{{fontColor}}" tag-color="{{tagColor}}" size="{{size}}" enable-remove="{{enableRemove}}" index="{{index}}" value="{{item}}"></tag-item>
+      
+    </template>
+    </div>
+     <template is="dom-if" if="{{enableAdd}}">
+       <paper-input on-focusout="_focusOut" error-message="{{emptyErrorMessage}}" label="{{placeholder}}" on-keydown="_keyDown" value="{{input_value}}"></paper-input>
+     </template>
+
+  </template>
+
+</dom-module>
+
+<script>Polymer({is:"paper-tags-input",properties:{tags:{type:Array,notify:!0,value:function(){return[]}},tagColor:String,fontColor:String,size:{type:String,value:"large"},emptyErrorMessage:{type:String,value:"Tag cannot be empty"},enableAdd:{type:Boolean,value:!0},enableRemove:{type:Boolean,value:!1},duplicateErrorMessage:{type:String,value:"Tag must be identical"},label:{type:String,value:""},placeholder:{type:String,value:"Please enter a new tag"},_input_value:String},listeners:{"tag-item-remove":"_onTagItemRemove"},ready:function(){},attached:function(){},detached:function(){},_addTag:function(e){if(0!=this.enableAdd){if("undefined"==typeof this.tags&&(this.tags=[]),""==e){var t=Polymer.dom(this.root).querySelector("paper-input");return t.errorMessage=this.emptyErrorMessage,void(t.invalid=!0)}if(this.tags.indexOf(e)>=0){var t=Polymer.dom(this.root).querySelector("paper-input");return t.errorMessage=this.duplicateErrorMessage,void(t.invalid=!0)}this.push("tags",e),this.input_value=""}},_getInputVal:function(){return this.input_value.trim()},_focusOut:function(e){var t=this._getInputVal();void 0!=typeof t&&""!=t&&this._addTag(this._getInputVal())},_keyDown:function(e){var t=e.which;if(13==t)this._addTag(this._getInputVal());else{var a=Polymer.dom(this.root).querySelector("paper-input");a.invalid=!1}},_onTagItemRemove:function(e){this.splice("tags",e.detail.index,1)}});</script>
+</body></html>

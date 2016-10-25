@@ -43,6 +43,5 @@
   },
   "_source": "git://github.com/uvalib-components/uvalib-catalog.git",
   "_target": "^1.0.0",
-  "_originalSource": "uvalib-components/uvalib-catalog",
-  "_direct": true
+  "_originalSource": "uvalib-components/uvalib-catalog"
 }
